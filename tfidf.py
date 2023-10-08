@@ -1,4 +1,4 @@
-from nltk.stem import PorterStemmer, WordNetLemmatizer
+from nltk.stem import PorterStemmer
 import nltk
 import string
 from nltk.corpus import stopwords
@@ -83,24 +83,35 @@ def cosine_similarity(v1, v2):
     return result
 
 
-def get_top_k(corpus, query, top_k):
-    """
-    It computes the search result (get the top_k documents).
-
-    :param query: str
-    :param top_k: int
-    """
-    original_documents, documents, document_vectors, vocabulary, idf = tfidf(corpus)
-
+def vectorize_query(query, vocabulary, idf):
     q = query.split()
     q = [STEMMER.stem(w) for w in q]
     query_vector = vectorize(q, vocabulary, idf)
+    return query_vector
+
+
+def get_top_k(corpus, query, k):
+    """
+    It computes the search result (get the top k documents).
+
+    :param corpus: corpus of documents
+    :param query: str
+    :param k: int
+    """
+    original_documents, documents, document_vectors, vocabulary, idf = tfidf(corpus)
+
+    query_vector = vectorize_query(query, vocabulary, idf)
     scores = [
         [cosine_similarity(query_vector, document_vectors[d]), d]
         for d in range(len(documents))
     ]
     scores.sort(key=lambda x: -x[0])
-    return [original_documents[scores[i][1]] for i in range(min(top_k, len(scores)))]
+    ans = []
+    indices = []
+    for i in range(min(k, len(original_documents))):
+        ans.append(original_documents[scores[i][1]])
+        indices.append(scores[i][1])
+    return ans, indices, query_vector
 
 
 def tfidf(corpus):
@@ -143,19 +154,34 @@ def compute_precision_at_k(predict, gt, k):
     return len(correct_predict) / k
 
 
-corpus = [
-    "Topic sentences are similar to mini thesis statements.\
-        Like a thesis statement, a topic sentence has a specific \
-        main point. Whereas the thesis is the main point of the essay",
-    "the topic sentence is the main point of the paragraph.\
-        Like the thesis statement, a topic sentence has a unifying function. \
-        But a thesis statement or topic sentence alone doesn’t guarantee unity.",
-    "An essay is unified if all the paragraphs relate to the thesis,\
-        whereas a paragraph is unified if all the sentences relate to the topic sentence.",
-]
+# Expand query function for Rocchio's Algorithm
+def expand_query(
+    relevant_doc_vecs, non_relevant_doc_vecs, query_vector, alpha, beta, gamma
+):
+    # Note: relevant_doc_vecs and non_relevant_doc_vecs are list of vectors, vectors are also lists in this case.
+    # We are using (zip(*list)) to columnwise addition. i.e. [[1,2,3], [4,5,6]] iterate over tuples (1,4),(2,5),(3,6)
+    # Check here: https://stackoverflow.com/questions/29139350/difference-between-ziplist-and-ziplist
+    # You can use numpy if you want to go fancier
 
+    num_rel = len(relevant_doc_vecs)
+    num_non_rel = len(non_relevant_doc_vecs)
 
-print(get_top_k(corpus, "sentence", 5))
-original_documents, documents, document_vectors, vocabulary, idf = tfidf(corpus)
-print(document_vectors)
-print(vocabulary)
+    # Compute the first term in the Rocchio equation
+    norm_query_vector = [alpha * weight for weight in query_vector]
+
+    # Compute the second term in the Rocchio equation
+    norm_sum_relevant = [beta * sum(x) / num_rel for x in zip(*relevant_doc_vecs)]
+
+    # Compute the last term in the Rocchio equation
+    norm_sum_non_relevant = [
+        -gamma * sum(x) / num_non_rel for x in zip(*non_relevant_doc_vecs)
+    ]
+
+    # Sum all the terms
+    modified_query_vector = [
+        sum(x) for x in zip(norm_sum_relevant, norm_sum_non_relevant, norm_query_vector)
+    ]
+
+    # Ignore negative elements
+    modified_query_vector = [x if x > 0 else 0 for x in modified_query_vector]
+    return modified_query_vector
