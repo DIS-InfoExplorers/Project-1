@@ -1,30 +1,60 @@
-from nltk.stem import PorterStemmer
+from nltk.stem import PorterStemmer, WordNetLemmatizer
 import nltk
 import string
 from nltk.corpus import stopwords
 import math
 from collections import Counter
+import re
+from nltk.corpus import wordnet as wn
+from multiprocessing import Pool
+import pandas as pd
+from math import log
+import numpy as np
 
-nltk.download("stopwords")
-nltk.download("punkt")
+# Download necessary resources
+nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('wordnet')
 
 STEMMER = PorterStemmer()
+LEMMATIZER = WordNetLemmatizer()
 
+# Precompile regex patterns for efficiency
+HTML_PATTERN = re.compile("(<.*?>)")
+NON_ASCII_DIGITS_PATTERN = re.compile("(\\W|\\d)")
+NON_ASCII_CHARS_PATTERN = re.compile(r'[^\x00-\x7F]+')
 
-def tokenize(text):
-    """
-    It tokenizes and stems an input text.
+# Convert stopwords list to set for faster lookup
+STOPWORDS_SET = set(stopwords.words("english"))
 
-    :param text: str, with the input text
-    :return: list, of the tokenized and stemmed tokens.
-    """
+def preprocess_text(text):
+    """Optimized text preprocessing function."""
+    
+    # Cleaning
+    text = HTML_PATTERN.sub("", text)
+    text = NON_ASCII_DIGITS_PATTERN.sub(" ", text)
+    text = NON_ASCII_CHARS_PATTERN.sub('', text)
     text = "".join([ch for ch in text if ch not in string.punctuation])
+    
+    # Tokenization
     tokens = nltk.word_tokenize(text)
-    return [
-        STEMMER.stem(word.lower())
+    
+    # Remove stopwords, and then perform Stemming and Lemmatization
+    preprocessed_tokens = [
+        STEMMER.stem(LEMMATIZER.lemmatize(word))
         for word in tokens
-        if word not in stopwords.words("english")
+        if word.lower() not in STOPWORDS_SET
     ]
+    
+    return preprocessed_tokens
+
+
+def parallel_preprocess_texts(texts):
+    with Pool() as pool:
+        preprocessed_batches = pool.map(preprocess_text, texts)
+    return preprocessed_batches
+
+    
 
 
 def idf_values(vocabulary, documents):
@@ -117,7 +147,7 @@ def get_top_k(corpus, query, k):
 def tfidf(corpus):
     # Tokenize sentences
     original_documents = [x.strip() for x in corpus]
-    documents = [tokenize(d) for d in original_documents]
+    documents = batch_preprocess_texts(original_documents)
 
     # create the vocabulary
     vocabulary = list(set([item for sublist in documents for item in sublist]))
@@ -185,3 +215,67 @@ def expand_query(
     # Ignore negative elements
     modified_query_vector = [x if x > 0 else 0 for x in modified_query_vector]
     return modified_query_vector
+
+def populate_tfidf_dataframe(documents, vocabulary):
+    # Create a list of dictionaries with term frequencies
+    list_of_dicts = [Counter(doc) for doc in documents]
+    
+    # Convert the list of dictionaries to a DataFrame
+    df = pd.DataFrame(list_of_dicts).fillna(0)
+    
+    # Reorder columns according to the vocabulary and fill missing columns with 0
+    df = df.reindex(columns=vocabulary, fill_value=0)
+    
+    return df
+
+def tfidf_with_pandas(corpus):
+    # Parallel tokenization and preprocessing
+    print("Process docs ...")
+    documents = parallel_preprocess_texts(corpus)
+
+    print("Create vocab ...")
+    # Create the vocabulary
+    vocabulary = list(set(word for doc in documents for word in doc))
+    vocabulary.sort()
+    
+    # Use the helper function to create and populate the DataFrame for term frequencies
+    print("Compute tf ...")
+    df = populate_tfidf_dataframe(documents, vocabulary)
+            
+    # Compute IDF values
+    print("Compute idf ...")
+    doc_count = len(documents)
+    idf = df.sum().apply(lambda x: log(doc_count / x))
+    
+    # Compute TF-IDF values
+    print("Compute tf-idf ...")
+    tfidf_df = df.apply(lambda x: x / x.sum(), axis=1).multiply(idf)
+    
+    return original_documents, documents, tfidf_df.values, vocabulary, idf
+
+def vectorize_queries(queries, vocabulary, idf):
+    """Vectorize a list of queries."""
+    return np.array([vectorize_query(query, vocabulary, idf) for query in queries])
+
+def batch_query(tfidf_matrix_normalized, query_vectors):
+    """Process multiple queries and return ranked document indices for each query."""
+    # Compute cosine similarities using matrix operations
+    similarity_matrix = np.dot(query_vectors, tfidf_matrix_normalized.T)
+    
+    # Get document indices ranked by relevance for each query
+    ranked_doc_indices = np.argsort(-similarity_matrix)
+    
+    return ranked_doc_indices
+    
+def preprocess_query(query):
+    """Tokenize, stem, and remove stopwords from the query."""
+    return preprocess_text(query)  # Assuming preprocess_text() is defined as before
+
+def vectorize_query(query, vocabulary, idf):
+    """Convert the query into its TF-IDF vector."""
+    query_tf = Counter(preprocess_query(query))
+    query_vector = [query_tf.get(term, 0) * idf[term] for term in vocabulary]
+    return np.array(query_vector)
+    
+
+
