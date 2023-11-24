@@ -1,3 +1,4 @@
+![Project Logo](Logo.png)
 # Project-1: Text Retrieval
 
 ## Introduction
