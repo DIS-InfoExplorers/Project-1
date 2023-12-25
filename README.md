@@ -6,11 +6,11 @@ Project 1 focuses on the task of text retrieval, which is the process of searchi
 
 ### Task 1: Document Full Ranking
 
-We are able to rank documents based on their relevance to a given question. You thanks to a document collection provided. This task simulates the construction of an end-to-end retrieval system.
+We are able to rank documents based on their relevance to a given question. thanks to a document collection provided. This task simulates the construction of an end-to-end retrieval system.
 
 ### Task 2: Top-k Re-ranking
 
-For Task 2, you will be provided with an initial ranking of documents per question. Your goal is to re-rank these documents based on their relevance to the question. This scenario mirrors real-world situations where end-to-end systems are implemented as retrieval followed by top-k re-ranking. Task 2 allows you to focus on the re-ranking aspect without the need to implement a complete end-to-end system.
+For Task 2, the goal is to re-rank these documents based on their relevance to the question. This scenario mirrors real-world situations where end-to-end systems are implemented as retrieval followed by top-k re-ranking. 
 
 ## Dataset
 
@@ -23,17 +23,16 @@ The corpus used contains a total of 1,471,405 documents, split into training and
 
 ## Project Evaluation
 
-Your project will be evaluated based on the following criteria:
+The project was evaluated based on the following criteria:
 
 ### Results - Metrics
 
 The evaluation score, S, is computed as a weighted average of the scores from these two tasks:
-S = w1 * Recall@10 + w2 * NDCG
-
-Where w1 = 0.8 and w2 = 0.2. This criterion accounts for 75% of your grade in the Results section. The grading further depends on your performance relative to other teams, with the top 10% receiving the highest score.
+S = w1 * Recall@10 + w2 * NDCG   
+Where w1 = 0.8 and w2 = 0.2.
 
 ## Constraints of project
 
-- You can use either supervised or unsupervised methods for the project. However, for supervised methods, you must train the model using the provided labeled data, and you are not allowed to use publicly available pre-trained models.
+- We can use either supervised or unsupervised methods for the project. However, for supervised methods, we must train the model using the provided labeled data, and are not allowed to use publicly available pre-trained models.
   
-- You are prohibited from using the TF-IDF implementation from sklearn or any other libraries.
+- It is prohibited to use the TF-IDF implementation from sklearn or any other libraries.
