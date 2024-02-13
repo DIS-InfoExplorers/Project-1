@@ -15,6 +15,8 @@ We are able to rank documents based on their relevance to a given question. than
 
 For Task 2, the goal is to re-rank these documents based on their relevance to the question. This scenario mirrors real-world situations where end-to-end systems are implemented as retrieval followed by top-k re-ranking. 
 
+Full details of the project can be found in the [Report](./Report.pdf).
+
 ## Dataset
 
 The corpus used contains a total of 1,471,405 documents, split into training and test sets as follows:
