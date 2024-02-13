@@ -1,5 +1,8 @@
 # Project-1: Text Retrieval
 
+## Our Kaggle Implementation
+https://www.kaggle.com/code/antonion01/final
+
 ## Introduction
 
 Project 1 focuses on the task of text retrieval, which is the process of searching and returning relevant documents for a given query from a collection of documents. This project includes two main subtasks:
